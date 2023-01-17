@@ -1,0 +1,15 @@
+﻿@model IEnumerable<GeorgianEgg.Models.Brand>
+
+@{
+    ViewData["Title"] = "Brands";
+}
+
+<h1>Brands</h1>
+
+<ul>
+    @foreach (var brand in Model)
+    {
+        <li><a asp-action="ShopByBrand" asp-route-brand="@brand.Name">@brand.Name</a></li>
+    }
+</ul>
+
