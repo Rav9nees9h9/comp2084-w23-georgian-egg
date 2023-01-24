@@ -1,4 +1,5 @@
 .vs/*
+*.DS_Store
 
 # Copied below from https://gist.githubusercontent.com/indyfromoz/4109296/raw/e160e07b8675972988fdbd1d4106252c73942926/aspnet-mvc.gitignore
 

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using GeorgianEgg.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace GeorgianEgg.Data
@@ -9,5 +10,7 @@ namespace GeorgianEgg.Data
             : base(options)
         {
         }
+
+        public DbSet<Brand> Brands { get; set; }
     }
 }
