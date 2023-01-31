@@ -10,85 +10,94 @@ using GeorgianEgg.Models;
 
 namespace GeorgianEgg.Controllers
 {
-    public class BrandsController : Controller
+    public class ProductsController : Controller
     {
         private readonly ApplicationDbContext _context;
 
-        public BrandsController(ApplicationDbContext context)
+        public ProductsController(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        // GET: Brands
+        // GET: Products
         public async Task<IActionResult> Index()
         {
-              return View(await _context.Brands.ToListAsync());
+            var applicationDbContext = _context.Products.Include(p => p.Brand).Include(p => p.Category);
+            return View(await applicationDbContext.ToListAsync());
         }
 
-        // GET: Brands/Details/5
+        // GET: Products/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null || _context.Brands == null)
+            if (id == null || _context.Products == null)
             {
                 return NotFound();
             }
 
-            var brand = await _context.Brands
+            var product = await _context.Products
+                .Include(p => p.Brand)
+                .Include(p => p.Category)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (brand == null)
+            if (product == null)
             {
                 return NotFound();
             }
 
-            return View(brand);
+            return View(product);
         }
 
-        // GET: Brands/Create
+        // GET: Products/Create
         public IActionResult Create()
         {
+            ViewData["BrandId"] = new SelectList(_context.Brands, "Id", "Name");
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Name");
             return View();
         }
 
-        // POST: Brands/Create
+        // POST: Products/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Name")] Brand brand)
+        public async Task<IActionResult> Create([Bind("Id,Name,Description,Price,Image,Rating,BrandId,CategoryId")] Product product)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(brand);
+                _context.Add(product);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            return View(brand);
+            ViewData["BrandId"] = new SelectList(_context.Brands, "Id", "Name", product.BrandId);
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Name", product.CategoryId);
+            return View(product);
         }
 
-        // GET: Brands/Edit/5
+        // GET: Products/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null || _context.Brands == null)
+            if (id == null || _context.Products == null)
             {
                 return NotFound();
             }
 
-            var brand = await _context.Brands.FindAsync(id);
-            if (brand == null)
+            var product = await _context.Products.FindAsync(id);
+            if (product == null)
             {
                 return NotFound();
             }
-            return View(brand);
+            ViewData["BrandId"] = new SelectList(_context.Brands, "Id", "Name", product.BrandId);
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Name", product.CategoryId);
+            return View(product);
         }
 
-        // POST: Brands/Edit/5
+        // POST: Products/Edit/5
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name")] Brand brand)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description,Price,Image,Rating,BrandId,CategoryId")] Product product)
         {
-            if (id != brand.Id)
+            if (id != product.Id)
             {
                 return NotFound();
             }
@@ -97,12 +106,12 @@ namespace GeorgianEgg.Controllers
             {
                 try
                 {
-                    _context.Update(brand);
+                    _context.Update(product);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!BrandExists(brand.Id))
+                    if (!ProductExists(product.Id))
                     {
                         return NotFound();
                     }
@@ -113,49 +122,53 @@ namespace GeorgianEgg.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            return View(brand);
+            ViewData["BrandId"] = new SelectList(_context.Brands, "Id", "Name", product.BrandId);
+            ViewData["CategoryId"] = new SelectList(_context.Categories, "Id", "Name", product.CategoryId);
+            return View(product);
         }
 
-        // GET: Brands/Delete/5
+        // GET: Products/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null || _context.Brands == null)
+            if (id == null || _context.Products == null)
             {
                 return NotFound();
             }
 
-            var brand = await _context.Brands
+            var product = await _context.Products
+                .Include(p => p.Brand)
+                .Include(p => p.Category)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (brand == null)
+            if (product == null)
             {
                 return NotFound();
             }
 
-            return View(brand);
+            return View(product);
         }
 
-        // POST: Brands/Delete/5
+        // POST: Products/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            if (_context.Brands == null)
+            if (_context.Products == null)
             {
-                return Problem("Entity set 'ApplicationDbContext.Brands'  is null.");
+                return Problem("Entity set 'ApplicationDbContext.Products'  is null.");
             }
-            var brand = await _context.Brands.FindAsync(id);
-            if (brand != null)
+            var product = await _context.Products.FindAsync(id);
+            if (product != null)
             {
-                _context.Brands.Remove(brand);
+                _context.Products.Remove(product);
             }
             
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool BrandExists(int id)
+        private bool ProductExists(int id)
         {
-          return _context.Brands.Any(e => e.Id == id);
+          return _context.Products.Any(e => e.Id == id);
         }
     }
 }
