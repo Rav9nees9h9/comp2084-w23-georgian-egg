@@ -2,12 +2,11 @@
 
 namespace GeorgianEgg.Models
 {
-    public class Brand
+    public class Category
     {
         public int Id { get; set; }
-        
+
         [Required]
-        [MinLength(3)]
         public String? Name { get; set; }
 
         public List<Product>? Products { get; set; }
