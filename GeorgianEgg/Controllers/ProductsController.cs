@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.IO;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +24,11 @@ namespace GeorgianEgg.Controllers
         // GET: Products
         public async Task<IActionResult> Index()
         {
-            var applicationDbContext = _context.Products.Include(p => p.Brand).Include(p => p.Category);
+            var applicationDbContext = _context.Products
+                .Include(p => p.Brand)
+                .Include(p => p.Category)
+                .OrderBy(p => p.Name);
+
             return View(await applicationDbContext.ToListAsync());
         }
 
@@ -59,10 +65,15 @@ namespace GeorgianEgg.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Name,Description,Price,Image,Rating,BrandId,CategoryId")] Product product)
+        public async Task<IActionResult> Create([Bind("Id,Name,Description,Price,Rating,BrandId,CategoryId")] Product product, IFormFile? Image)
         {
             if (ModelState.IsValid)
             {
+                if (Image != null)
+                {
+                    product.Image = UploadPhoto(Image);
+                }
+
                 _context.Add(product);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
@@ -95,7 +106,7 @@ namespace GeorgianEgg.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description,Price,Image,Rating,BrandId,CategoryId")] Product product)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description,Price,Rating,BrandId,CategoryId")] Product product, IFormFile? Image, string? CurrentImage)
         {
             if (id != product.Id)
             {
@@ -104,6 +115,20 @@ namespace GeorgianEgg.Controllers
 
             if (ModelState.IsValid)
             {
+                if (Image != null)
+                {
+                    if (CurrentImage != null)
+                    {
+                        DeletePhoto(CurrentImage);
+                    }
+
+                    product.Image = UploadPhoto(Image);
+                }
+                else
+                {
+                    product.Image = CurrentImage;
+                }
+
                 try
                 {
                     _context.Update(product);
@@ -159,6 +184,11 @@ namespace GeorgianEgg.Controllers
             var product = await _context.Products.FindAsync(id);
             if (product != null)
             {
+                if (product.Image != null)
+                {
+                    DeletePhoto(product.Image);
+                }
+
                 _context.Products.Remove(product);
             }
             
@@ -169,6 +199,41 @@ namespace GeorgianEgg.Controllers
         private bool ProductExists(int id)
         {
           return _context.Products.Any(e => e.Id == id);
+        }
+
+        private static string UploadPhoto(IFormFile Photo)
+        {
+            // use GUID (Globally Unique ID) to create a unique image name
+            // logo.jpg => fbdjqb32153-logo.jpg
+            var fileName = Guid.NewGuid().ToString() + "-" + Photo.FileName;
+
+            // Set a destination filepath dynamically (so it works locally and on the server)
+            var uploadPath = Directory.GetCurrentDirectory() + "\\wwwroot\\img\\products\\" + fileName;
+
+            // Write the uploaded file into our destination (wwwroot/img/products/...)
+            using (var stream = new FileStream(uploadPath, FileMode.Create))
+            {
+                Photo.CopyTo(stream);
+            }
+
+            return fileName;
+        }
+
+        private static void DeletePhoto(string Photo)
+        {
+            var path = Directory.GetCurrentDirectory() + "\\wwwroot\\img\\products\\" + Photo;
+
+            try
+            {
+                if (System.IO.File.Exists(path))
+                {
+                    System.IO.File.Delete(path);
+                }
+            }
+            catch (IOException e)
+            {
+                Console.WriteLine(e.Message);
+            }
         }
     }
 }

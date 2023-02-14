@@ -9,6 +9,9 @@ namespace GeorgianEgg.Models
         [Required]
         public String? Name { get; set; }
         public String? Description { get; set; }
+
+        [Range(0.01, 100000, ErrorMessage = "Invalid price")]
+        [DisplayFormat(DataFormatString = "{0:c}")]
         public decimal Price { get; set; }
         public String? Image { get; set; }
 
