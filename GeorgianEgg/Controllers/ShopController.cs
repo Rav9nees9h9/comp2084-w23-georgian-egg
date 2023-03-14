@@ -53,6 +53,21 @@ namespace GeorgianEgg.Controllers
                 .OrderByDescending(cl => cl.Id)
                 .ToList();
 
+            ViewData["TotalPrice"] = cartLines.Sum(cl => cl.Price).ToString("C");
+
+            /*
+            decimal totalPrice = 0;
+
+            for (int i = 0; i < cartLines.Count(); i++)
+            {
+                CartLine cartLine = cartLines[i];
+
+                totalPrice += cartLine.Price;
+            }
+
+            ViewData["TotalPrice"] = totalPrice.ToString("C");
+            */
+
             return View(cartLines);
         }
 
@@ -75,14 +90,75 @@ namespace GeorgianEgg.Controllers
 
             var customerId = GetCustomerId();
 
-            var cartLine = new CartLine() {
-                ProductId = ProductId,
-                Quantity = Quantity,
-                Price = price,
-                CustomerId = customerId,
-            };
+            var cartLine = _context.CartLines
+                .Where(cl => cl.ProductId == ProductId && cl.CustomerId == customerId)
+                .FirstOrDefault();
 
-            _context.CartLines.Add(cartLine);
+            if (cartLine != null)
+            {
+                cartLine.Quantity += Quantity;
+                cartLine.Price += price;
+
+                _context.CartLines.Update(cartLine);
+                _context.SaveChanges();
+            }
+            else
+            {
+                cartLine = new CartLine()
+                {
+                    ProductId = ProductId,
+                    Quantity = Quantity,
+                    Price = price,
+                    CustomerId = customerId,
+                };
+
+                _context.CartLines.Add(cartLine);
+                _context.SaveChanges();
+            }
+
+            return Redirect("Cart");
+        }
+
+        // POST Shop/UpdateCart
+        [HttpPost]
+        public IActionResult UpdateCart([FromForm] int CartLineId, [FromForm] int Quantity)
+        {
+            if (Quantity <= 0)
+            {
+                return BadRequest();
+            }
+
+            var cartLine = _context.CartLines.Find(CartLineId);
+
+            if (cartLine == null)
+            {
+                return BadRequest();
+            }
+
+            var product = _context.Products.Find(cartLine.ProductId);
+            var discount = cartLine.Price - (product.Price * cartLine.Quantity);
+
+            cartLine.Quantity = Quantity;
+            cartLine.Price = Math.Max((product.Price * Quantity) - discount, 0);
+
+            _context.CartLines.Update(cartLine);
+            _context.SaveChanges();
+
+            return Redirect("Cart");
+        }
+
+        // POST Shop/RemoveFromCart
+        [HttpPost]
+        public IActionResult RemoveFromCart([FromForm] int CartLineId)
+        {
+            var cartLine = _context.CartLines.Find(CartLineId);
+
+            if (cartLine == null)
+            {
+                return BadRequest();
+            }
+
+            _context.CartLines.Remove(cartLine);
             _context.SaveChanges();
 
             return Redirect("Cart");
