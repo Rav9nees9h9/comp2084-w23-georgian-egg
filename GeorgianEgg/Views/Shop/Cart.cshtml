@@ -1,0 +1,57 @@
+﻿@model IEnumerable<GeorgianEgg.Models.CartLine>
+
+@{
+    ViewData["Title"] = "Cart";
+}
+
+<h1>Cart</h1>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Product.Image)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Product)
+            </th>
+            <th>
+                Price per
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Quantity)
+            </th>
+            <th>
+                Total Price
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @if (item.Product.Image != null)
+                {
+                    <img class="thumbnail" src="~/img/products/@item.Product.Image" alt="Product Photo" />
+                }
+            </td>
+            <td>
+                <a asp-controller="Products" asp-action="Details" asp-route-id="@item.Product.Id">@item.Product.Name</a>
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Product.Price)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Quantity)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Price)
+            </td>
+            <td>
+                <a asp-action="Delete" asp-route-id="@item.Id">Remove</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

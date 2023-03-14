@@ -43,6 +43,19 @@ namespace GeorgianEgg.Controllers
             return View(products);
         }
 
+        public IActionResult Cart()
+        {
+            var customerId = GetCustomerId();
+
+            var cartLines = _context.CartLines
+                .Where(cl => cl.CustomerId == customerId)
+                .Include(cl => cl.Product)
+                .OrderByDescending(cl => cl.Id)
+                .ToList();
+
+            return View(cartLines);
+        }
+
         // POST Shop/AddToCart
         [HttpPost]
         public IActionResult AddToCart([FromForm] int ProductId, [FromForm] int Quantity)
@@ -75,10 +88,36 @@ namespace GeorgianEgg.Controllers
             return Redirect("Cart");
         }
 
-        private static String GetCustomerId()
+        private String GetCustomerId()
         {
-            // TODO
-            return "1";
+            var customerId = HttpContext.Session.GetString("CustomerId");
+
+            if (String.IsNullOrWhiteSpace(customerId))
+            {
+                // '??' is called 'null-coalescing' operator
+                var isLoggedIn = User?.Identity?.IsAuthenticated ?? false;
+
+                if (isLoggedIn)
+                {
+                    // 1.a If user is logged in, use their email
+                    customerId = User.Identity.Name;
+                }
+                else
+                {
+                    // 1.b Else generate a unique ID
+
+                    // UUID or GUID
+                    // UUID = Universally Unique ID
+                    // GUID = Globally Unique Id
+                    // C# uses "GUID"
+
+                    customerId = Guid.NewGuid().ToString();
+                }
+
+                HttpContext.Session.SetString("CustomerId", customerId);
+            }
+
+            return customerId;
         }
     }
 }
