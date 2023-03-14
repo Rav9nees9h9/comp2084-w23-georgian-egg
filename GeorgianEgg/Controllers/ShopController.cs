@@ -1,4 +1,5 @@
 ﻿using GeorgianEgg.Data;
+using GeorgianEgg.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,9 +25,12 @@ namespace GeorgianEgg.Controllers
 
         public IActionResult Category(int Id)
         {
-            // TODO: Handle invalid Id
-
             var category = _context.Categories.Find(Id);
+
+            if (category == null)
+            {
+                return NotFound();
+            }
 
             ViewData["CategoryName"] = category.Name;
 
@@ -37,6 +41,44 @@ namespace GeorgianEgg.Controllers
                 .ToList();
 
             return View(products);
+        }
+
+        // POST Shop/AddToCart
+        [HttpPost]
+        public IActionResult AddToCart([FromForm] int ProductId, [FromForm] int Quantity)
+        {
+            if (Quantity <= 0)
+            {
+                return BadRequest();
+            }
+
+            var product = _context.Products.Find(ProductId);
+            if (product == null)
+            {
+                return BadRequest(); // HTTP Status code 400
+            }
+
+            var price = product.Price * Quantity;
+
+            var customerId = GetCustomerId();
+
+            var cartLine = new CartLine() {
+                ProductId = ProductId,
+                Quantity = Quantity,
+                Price = price,
+                CustomerId = customerId,
+            };
+
+            _context.CartLines.Add(cartLine);
+            _context.SaveChanges();
+
+            return Redirect("Cart");
+        }
+
+        private static String GetCustomerId()
+        {
+            // TODO
+            return "1";
         }
     }
 }
