@@ -1,6 +1,7 @@
 using GeorgianEgg.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,8 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.Requ
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
 var configuration = builder.Configuration;
+
+StripeConfiguration.ApiKey = configuration["Payments:Stripe:SecretKey"];
 
 builder.Services.AddAuthentication()
     .AddGoogle(options =>

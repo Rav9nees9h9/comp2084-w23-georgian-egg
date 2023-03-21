@@ -3,16 +3,20 @@ using GeorgianEgg.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Stripe;
+using Stripe.Checkout;
 
 namespace GeorgianEgg.Controllers
 {
     public class ShopController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _config;
 
-        public ShopController(ApplicationDbContext context)
+        public ShopController(ApplicationDbContext context, IConfiguration config)
         {
             _context = context;
+            _config = config;
         }
 
         // GET Shop/Index
@@ -77,9 +81,170 @@ namespace GeorgianEgg.Controllers
 
         // GET Shop/Checkout
         [Authorize]
+        [HttpGet]
         public IActionResult Checkout()
         {
+            var customerId = GetCustomerId();
+
+            var totalPrice = _context.CartLines
+                .Where(cl => cl.CustomerId == customerId)
+                .Sum(cl => cl.Price)
+                .ToString("C");
+
+            ViewData["Total"] = totalPrice;
+
             return View();
+        }
+
+        // POST Shop/Checkout
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Checkout(
+            [Bind("FirstName,LastName,Address,City,Province,PostalCode,Phone")] Order Order
+        )
+        {
+            // Build Order
+            Order.OrderDate = DateTime.UtcNow;
+            Order.CustomerId = GetCustomerId();
+            Order.InProgress = true;
+
+            // Remove old InProgress orders for the customer
+            var oldOrders = await _context.Orders
+                .Where(o => o.InProgress && o.CustomerId == Order.CustomerId)
+                .ToListAsync();
+
+            foreach (var oldOrder in oldOrders)
+            {
+                _context.Orders.Remove(oldOrder);
+            }
+
+            // Get cart lines
+            var cartLines = await _context.CartLines
+                .Where(cl => cl.CustomerId == Order.CustomerId)
+                .ToListAsync();
+
+            Order.Total = cartLines.Sum(cl => cl.Price);
+
+            // Create order
+            var CreatedOrder = await _context.Orders.AddAsync(Order);
+            await _context.SaveChangesAsync();
+
+            foreach (var cartLine in cartLines)
+            {
+                // Create OrderLine
+                await _context.OrderLines.AddAsync(new OrderLine()
+                {
+                    Quantity = cartLine.Quantity,
+                    Price = cartLine.Price,
+                    ProductId = cartLine.ProductId,
+
+                    OrderId = CreatedOrder.Entity.Id,
+                });
+            }
+            
+            await _context.SaveChangesAsync();
+
+            return Redirect("Payment");
+        }
+
+        // GET Shop/Payment
+        [Authorize]
+        [HttpGet]
+        public async Task<IActionResult> Payment()
+        {
+            var customerId = GetCustomerId();
+
+            var order = await GetCurrentOrderAsync(customerId);
+
+            if (order == null)
+            {
+                return NotFound();
+            }
+
+            ViewData["Total"] = order.Total;
+
+            ViewData["PublishableKey"] = _config["Payments:Stripe:PublishableKey"];
+
+            return View();
+        }
+
+        // POST Shop/Payment
+        [Authorize]
+        [HttpPost]
+        public async Task<IActionResult> Payment(String StripeToken)
+        {
+            var customerId = GetCustomerId();
+            var order = await GetCurrentOrderAsync(customerId);
+
+            // can't access payment process unless there is an ongoing order
+            if (order == null)
+            {
+                return NotFound();
+            }
+
+            var options = new SessionCreateOptions
+            {
+                LineItems = new List<SessionLineItemOptions>
+                {
+                    new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
+                        {
+                            UnitAmount = (long) (order.Total * 100),
+                            Currency = "CAD",
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = "Store Purchase",
+                            },
+                        },
+                        Quantity = 1,
+                    },
+                },
+                PaymentMethodTypes = new List<String>
+                {
+                    "card",
+                },
+                Mode = "payment",
+                SuccessUrl = "https://" + Request.Host + "/Shop/SaveOrder",
+                CancelUrl = "https://" + Request.Host + "/Shop/Cart",
+            };
+
+            var service = new SessionService();
+            var session = service.Create(options);
+
+            Response.Headers.Add("Status", "303");
+            Response.Headers.Add("Location", session.Url);
+
+            return Json(new { id = session.Id });
+        }
+
+        // GET /Shop/SaveOrder
+        [Authorize]
+        public async Task<IActionResult> SaveOrder()
+        {
+            var customerId = GetCustomerId();
+            var order = await GetCurrentOrderAsync(customerId);
+
+            if (order == null)
+            {
+                return NotFound();
+            }
+
+            order.InProgress = false;
+
+            var cartLines = await _context.CartLines
+                .Where(cl => cl.CustomerId == customerId)
+                .ToListAsync();
+
+            foreach (var cartLine in cartLines)
+            {
+                _context.CartLines.Remove(cartLine);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction("Details", "Orders", new { @id = order.Id });
         }
 
         // POST Shop/AddToCart
@@ -205,6 +370,20 @@ namespace GeorgianEgg.Controllers
             }
 
             return customerId;
+        }
+
+        private async Task<Order?> GetCurrentOrderAsync(String customerId)
+        {
+            var orders = await _context.Orders
+                .Where(o => o.InProgress && o.CustomerId == customerId)
+                .ToListAsync();
+
+            if (orders.Count() == 0)
+            {
+                return null;
+            }
+
+            return orders[0];
         }
     }
 }
