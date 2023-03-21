@@ -1,5 +1,6 @@
 ﻿using GeorgianEgg.Data;
 using GeorgianEgg.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +15,7 @@ namespace GeorgianEgg.Controllers
             _context = context;
         }
 
+        // GET Shop/Index
         public IActionResult Index()
         {
             var categories = _context.Categories
@@ -23,6 +25,7 @@ namespace GeorgianEgg.Controllers
             return View(categories);
         }
 
+        // GET Shop/Category?Id=123
         public IActionResult Category(int Id)
         {
             var category = _context.Categories.Find(Id);
@@ -43,6 +46,7 @@ namespace GeorgianEgg.Controllers
             return View(products);
         }
 
+        // GET Shop/Cart
         public IActionResult Cart()
         {
             var customerId = GetCustomerId();
@@ -69,6 +73,13 @@ namespace GeorgianEgg.Controllers
             */
 
             return View(cartLines);
+        }
+
+        // GET Shop/Checkout
+        [Authorize]
+        public IActionResult Checkout()
+        {
+            return View();
         }
 
         // POST Shop/AddToCart
