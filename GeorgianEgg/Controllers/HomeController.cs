@@ -6,15 +6,10 @@ namespace GeorgianEgg.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
-
-        public HomeController(ILogger<HomeController> logger)
-        {
-            _logger = logger;
-        }
-
         public IActionResult Index()
         {
+            ViewData["Message"] = "Hey class!";
+
             return View("Index");
         }
 
@@ -28,5 +23,11 @@ namespace GeorgianEgg.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
+
+        // Broken, used for TDD example
+        public IActionResult HelloWorld()
+        {
+            return View("HelloWorld");
+	    }
     }
 }
