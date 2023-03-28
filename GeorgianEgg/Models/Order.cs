@@ -47,6 +47,7 @@ namespace GeorgianEgg.Models
         public String Phone { get; set; }
 
         [Required]
+        [DisplayName("Customer")]
         public String CustomerId { get; set; }
 
         public List<OrderLine>? OrderLines { get; set; }
